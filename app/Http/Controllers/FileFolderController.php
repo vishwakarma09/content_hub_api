@@ -8,6 +8,8 @@ use App\Models\FileFolder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 
+use Illuminate\Support\Facades\Log;
+
 class FileFolderController extends Controller
 {
     /**
@@ -16,6 +18,18 @@ class FileFolderController extends Controller
     public function index()
     {
         //
+    }
+
+    /**
+     * @GetRootNode
+     */
+    public function getRootNode()
+    {
+        $root = FileFolder::getRootOfAuthUser();
+        return response()->json([
+            'root' => $root,
+            'descendents' => $descendants = $root->descendants()->get()
+        ]);
     }
 
     /**
@@ -56,7 +70,14 @@ class FileFolderController extends Controller
      */
     public function show(FileFolder $fileFolder)
     {
-        //
+        Log::info('Inside show of FileFolderController');
+       // Log the entire request data
+        Log::info('Incoming request:' . print_r($fileFolder->id, true));
+
+        $children = FileFolder::getDescendents($fileFolder->id);
+        return response()->json([
+            'descendents' => $children
+        ]);
     }
 
     /**

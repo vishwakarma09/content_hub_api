@@ -10,5 +10,6 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 
 
 Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('file-folders/get-root', [FileFolderController::class, 'getRootNode']);
     Route::apiResource('file-folders', FileFolderController::class);
 });

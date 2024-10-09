@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Kalnoy\Nestedset\NodeTrait;
 
+use Illuminate\Support\Facades\Log;
+
 class FileFolder extends Model
 {
     use HasFactory, NodeTrait; // This trait comes from the kalnoy/nestedset package
@@ -31,5 +33,16 @@ class FileFolder extends Model
         }
 
         return $root;
+    }
+
+    public static function getDescendents($nodeId)
+    {
+        Log::info('inside Model getDescendents with nodeId: ' . $nodeId);
+
+        $node = FileFolder::where('id', $nodeId)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        return $node->descendants()->get();
     }
 }
