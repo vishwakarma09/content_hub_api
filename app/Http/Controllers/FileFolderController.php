@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreFileFolderRequest;
 use App\Http\Requests\UpdateFileFolderRequest;
 use App\Models\FileFolder;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
 class FileFolderController extends Controller
 {
@@ -21,7 +23,32 @@ class FileFolderController extends Controller
      */
     public function store(StoreFileFolderRequest $request)
     {
-        //
+        $root = FileFolder::getRootOfAuthUser();
+
+        $validated = $request->validate([
+            'file' => 'required',
+            'fileName' => 'required',
+        ]);
+
+        // extract base64 encoded file
+        $binaryFile = base64_decode($validated['file']);
+        $tempFileName = uniqid();
+        $path = Storage::disk('local')->put($tempFileName, $binaryFile);
+
+        $subFolder = FileFolder::create([
+            'name' => $validated['fileName'], 
+            'type' => 'file',
+            'user_id' => Auth::id(),
+        ]);
+        $subFolder->appendToNode($root)->save();
+
+        // return $rootFolder and $path in response
+        return response()->json([
+            'root' => $root,
+            'subFolder' => $subFolder,
+            'path' => $path,
+            'decendents' => $descendants = $root->descendants()->get()
+        ]);
     }
 
     /**

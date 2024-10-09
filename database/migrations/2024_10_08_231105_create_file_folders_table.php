@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('files_and_folders', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->enum('type', ['file', 'folder']); // To differentiate between file and folder
             $table->integer('parent_id')->nullable(); // Nullable for root items
             $table->integer('_lft')->nullable(); // Left boundary for nested set
