@@ -97,4 +97,21 @@ class FileFolder extends Model
             'descendents' => $descendants = $parentNode->descendants()->get(),
         ];
     }
+
+    public static function updateNode($nodeId, $name)
+    {
+        $node = FileFolder::where('id', $nodeId)
+            ->where('user_id', Auth::id())
+            ->first();
+        if (!$node) {
+            return response()->json([
+                'message' => 'Node not found'
+            ], 404);
+        }
+
+        $node->name = $name;
+        $node->save();
+
+        return $node;
+    }
 }

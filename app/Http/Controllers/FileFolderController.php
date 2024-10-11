@@ -52,8 +52,6 @@ class FileFolderController extends Controller
             'name' => 'required',
         ]);
 
-        Log::info('Incoming request:' . print_r($validated, true));
-
         $createResponse = FileFolder::createNode($validated['name'], $validated['type'], $validated['parent_id']);
         // return $rootFolder and $path in response
         return response()->json($createResponse);
@@ -142,7 +140,15 @@ class FileFolderController extends Controller
      */
     public function update(UpdateFileFolderRequest $request, FileFolder $fileFolder)
     {
-        //
+        Log::info('Inside update of FileFolderController');
+        $validated = $request->validate([
+            'id' => 'required',
+            'text' => 'required',
+        ]);
+
+        $updateResponse = FileFolder::updateNode($validated['id'], $validated['text']);
+        // return $rootFolder and $path in response
+        return response()->json($updateResponse);
     }
 
     /**
