@@ -35,6 +35,20 @@ class FileFolder extends Model
         return $root;
     }
 
+    public static function getAncestors($nodeId)
+    {
+        Log::info('inside Model getAncestors with nodeId: ' . $nodeId);
+
+        $node = FileFolder::where('id', $nodeId)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        return $node->ancestors()->get();
+    }
+
+    /**
+     * return all descendents of a node
+     */
     public static function getDescendents($nodeId)
     {
         Log::info('inside Model getDescendents with nodeId: ' . $nodeId);
@@ -44,5 +58,43 @@ class FileFolder extends Model
             ->first();
 
         return $node->descendants()->get();
+    }
+
+    /**
+     * returns immediate children of a node
+     */
+    public static function getChildren($nodeId)
+    {
+        Log::info('inside Model getChildren with nodeId: ' . $nodeId);
+
+        $node = FileFolder::where('id', $nodeId)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        return $node->children()->get();
+    }
+
+    public static function createNode($name, $type, $parentId)
+    {
+        $parentNode = FileFolder::where('id', $parentId)
+            ->where('user_id', Auth::id())
+            ->first();
+        if (!$parentNode) {
+            return response()->json([
+                'message' => 'Parent node not found'
+            ], 404);
+        }
+
+        $newNode = FileFolder::create([
+            'name' => $name,
+            'type' => $type,
+            'user_id' => Auth::id(),
+            'parent_id' => $parentId
+        ]);
+
+        return [
+            'newNode' => $newNode,
+            'descendents' => $descendants = $parentNode->descendants()->get(),
+        ];
     }
 }

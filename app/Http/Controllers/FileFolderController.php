@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreFileFolderRequest;
 use App\Http\Requests\UpdateFileFolderRequest;
+use Illuminate\Http\Request;
 use App\Models\FileFolder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +13,11 @@ use Illuminate\Support\Facades\Log;
 
 class FileFolderController extends Controller
 {
+
+    public function __construct()
+    {
+        Log::info('Inside FileFolderController constructor');
+    }
     /**
      * Display a listing of the resource.
      */
@@ -30,6 +36,57 @@ class FileFolderController extends Controller
             'root' => $root,
             'descendents' => $descendants = $root->descendants()->get()
         ]);
+    }
+
+    /**
+     * create node
+     * @params $parentId
+     * @params $type
+     */
+    public function createNode(Request $request)
+    {
+        Log::info('Inside createNode of FileFolderController');
+        $validated = $request->validate([
+            'parent_id' => 'required',
+            'type' => 'required',
+            'name' => 'required',
+        ]);
+
+        Log::info('Incoming request:' . print_r($validated, true));
+
+        $createResponse = FileFolder::createNode($validated['name'], $validated['type'], $validated['parent_id']);
+        // return $rootFolder and $path in response
+        return response()->json($createResponse);
+    }
+
+    /**
+     * get ancestors
+     * @params $nodeId
+     */
+    public function getAncestors($node_id)
+    {
+        $ancestors = FileFolder::getAncestors($node_id);
+        return response()->json($ancestors);
+    }
+
+    /**
+     * get descendents
+     * @params $nodeId
+     */
+    public function getDescendents($node_id)
+    {
+        $descendents = FileFolder::getDescendents($node_id);
+        return response()->json($descendents);
+    }
+
+    /**
+     * get children
+     * @params $nodeId
+     */
+    public function getChildren($node_id)
+    {
+        $children = FileFolder::getChildren($node_id);
+        return response()->json($children);
     }
 
     /**
@@ -74,7 +131,7 @@ class FileFolderController extends Controller
        // Log the entire request data
         Log::info('Incoming request:' . print_r($fileFolder->id, true));
 
-        $children = FileFolder::getDescendents($fileFolder->id);
+        $children = FileFolder::getChildren($fileFolder->id);
         return response()->json([
             'descendents' => $children
         ]);
