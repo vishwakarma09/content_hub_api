@@ -92,12 +92,21 @@ class FileFolderController extends Controller
      */
     public function store(StoreFileFolderRequest $request)
     {
-        $root = FileFolder::getRootOfAuthUser();
-
         $validated = $request->validate([
             'file' => 'required',
             'fileName' => 'required',
+            'parent_id' => 'required',
         ]);
+
+        // try to find the parent node
+        $parentNode = FileFolder::where('id', $validated['parent_id'])
+            ->where('user_id', Auth::id())
+            ->first();
+        if (!$parentNode) {
+            return response()->json([
+                'message' => 'Parent node not found'
+            ], 404);
+        }
 
         // extract base64 encoded file
         $binaryFile = base64_decode($validated['file']);
@@ -108,15 +117,16 @@ class FileFolderController extends Controller
             'name' => $validated['fileName'], 
             'type' => 'file',
             'user_id' => Auth::id(),
+            'parent_id' => $validated['parent_id'],
         ]);
-        $subFolder->appendToNode($root)->save();
+        $subFolder->appendToNode($parentNode)->save();
 
         // return $rootFolder and $path in response
         return response()->json([
-            'root' => $root,
+            'parentNode' => $parentNode,
             'subFolder' => $subFolder,
             'path' => $path,
-            'decendents' => $descendants = $root->descendants()->get()
+            'decendents' => $descendants = $parentNode->descendants()->get()
         ]);
     }
 
