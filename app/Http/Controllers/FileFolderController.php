@@ -168,4 +168,29 @@ class FileFolderController extends Controller
     {
         //
     }
+
+    /**
+     * get share
+     * @params $nodeId
+     */
+    public function getShare($node_id)
+    {
+        $share = FileFolder::getShare($node_id);
+        return response()->json($share);
+    }
+
+    /**
+     * add share
+     */
+    public function addShare($node_id, Request $request)
+    {
+        Log::info('Inside addShare of FileFolderController');
+        $validated = $request->validate([
+            'email_id' => 'required',
+        ]);
+
+        $email_id = $validated['email_id'];
+        $share = FileFolder::addShare($node_id, $email_id);
+        return response()->json($share);
+    }
 }

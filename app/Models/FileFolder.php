@@ -13,7 +13,7 @@ class FileFolder extends Model
 {
     use HasFactory, NodeTrait; // This trait comes from the kalnoy/nestedset package
 
-    protected $table = 'files_and_folders';
+    // protected $table = 'files_and_folders';
 
     protected $fillable = ['name', 'type', 'parent_id', '_lft', '_rgt', 'depth', 'user_id'];
 
@@ -26,7 +26,7 @@ class FileFolder extends Model
         // create root if not exists
         if (!$root) {
             $root = FileFolder::create([
-                'name' => 'Root',
+                'name' => 'Home',
                 'type' => 'folder',
                 'user_id' => Auth::id()
             ]);
@@ -113,5 +113,68 @@ class FileFolder extends Model
         $node->save();
 
         return $node;
+    }
+
+    /**
+     * getShare
+     * @params $nodeId
+     */
+    public static function getShare($nodeId)
+    {
+        // validate ownership
+        $node = FileFolder::where('id', $nodeId)
+            ->where('user_id', Auth::id())
+            ->first();
+        if (!$node) {
+            return response()->json([
+                'message' => 'Node not found'
+            ], 404);
+        }
+
+        $sharedWith = FileFolderShare::where('file_folder_id', $nodeId)->get();
+        return $sharedWith;
+    }
+
+    /**
+     * addShare
+     * @params $nodeId, $userId
+     */
+    public static function addShare($nodeId, $emailId)
+    {
+        // validate ownership
+        $node = FileFolder::where('id', $nodeId)
+            ->where('user_id', Auth::id())
+            ->first();
+        if (!$node) {
+            return response()->json([
+                'message' => 'Node not found'
+            ], 404);
+        }
+
+        // check if user exists
+        $user = User::where('email', $emailId)->first();
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        // check if already shared
+        $sharedWith = FileFolderShare::where('file_folder_id', $nodeId)
+            ->where('user_id', $user->id)
+            ->first();
+        if ($sharedWith) {
+            return response()->json([
+                'message' => 'Already shared with this user'
+            ], 400);
+        }
+
+        Log::info('inside Model addShare with nodeId: ' . $nodeId . ' user id ' . $user->id);
+        $share = FileFolderShare::create([
+            'file_folder_id' => $nodeId,
+            'user_id' => $user->id
+        ]);
+
+        return $share;
     }
 }
