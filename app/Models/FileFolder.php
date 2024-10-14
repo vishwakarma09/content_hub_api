@@ -131,8 +131,18 @@ class FileFolder extends Model
             ], 404);
         }
 
-        $sharedWith = FileFolderShare::where('file_folder_id', $nodeId)->get();
-        return $sharedWith;
+        // get ancestors to this node
+        $ancestors = $node->ancestors()->get()->toArray();
+        Log::info('ancestors: ' . print_r($ancestors, true));
+        $ancestorIds = [$node->id]; // pre-fill with current node id
+        foreach ($ancestors as $ancestor) {
+            $ancestorIds[] = $ancestor['id'];
+        }
+
+        // get all users with whom ancestor nodes are shared
+        $sharedWith = FileFolderShare::whereIn('file_folder_id', $ancestorIds)->get()->toArray();
+        $users =  User::whereIn('id', array_column($sharedWith, 'user_id'))->get()->toArray();
+        return $users;
     }
 
     /**
@@ -146,35 +156,37 @@ class FileFolder extends Model
             ->where('user_id', Auth::id())
             ->first();
         if (!$node) {
-            return response()->json([
-                'message' => 'Node not found'
-            ], 404);
+            return ['status' => false, 'message' => 'Node not found'];
         }
 
         // check if user exists
         $user = User::where('email', $emailId)->first();
         if (!$user) {
-            return response()->json([
-                'message' => 'User not found'
-            ], 404);
+            return ['status' => false, 'message' => 'User not found'];
         }
 
+        // get ancestors to this node
+        $ancestorIds = [$node->id]; // pre-fill with current node id
+        $ancestors = $node->ancestors()->get()->toArray();
+        foreach ($ancestors as $ancestor) {
+            $ancestorIds[] = $ancestor['id'];
+        }
+        Log::info('ancestors: ' . print_r($ancestorIds, true));
+
         // check if already shared
-        $sharedWith = FileFolderShare::where('file_folder_id', $nodeId)
+        $sharedWith = FileFolderShare::whereIn('file_folder_id', $ancestorIds)
             ->where('user_id', $user->id)
             ->first();
         if ($sharedWith) {
-            return response()->json([
-                'message' => 'Already shared with this user'
-            ], 400);
+            return ['status' => false, 'message' => 'Already shared with this user'];
         }
 
         Log::info('inside Model addShare with nodeId: ' . $nodeId . ' user id ' . $user->id);
-        $share = FileFolderShare::create([
+        FileFolderShare::create([
             'file_folder_id' => $nodeId,
             'user_id' => $user->id
         ]);
 
-        return $share;
+        return ['status' => true, 'message' => 'Shared successfully'];
     }
 }
