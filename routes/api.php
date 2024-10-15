@@ -10,6 +10,9 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 
 // File and Folder routes
 Route::middleware(['auth:sanctum'])->group(function () {
+    // hub routes
+    Route::get('file-folders/get-hub-root', [FileFolderController::class, 'getHubRoot']);
+
     // share routes
     Route::get('file-folders/{node_id}/share', [FileFolderController::class, 'getShare']);
     Route::post('file-folders/{node_id}/share', [FileFolderController::class, 'addShare']);

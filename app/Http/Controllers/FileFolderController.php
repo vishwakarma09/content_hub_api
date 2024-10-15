@@ -209,4 +209,13 @@ class FileFolderController extends Controller
         $share = FileFolder::deleteShare($node_id, $validated['user_id']);
         return response()->json($share);
     }
+
+    /**
+     * get hub root
+     */
+    public function getHubRoot()
+    {
+        $hubRoot = FileFolder::getHubRoot();
+        return response()->json($hubRoot);
+    }
 }

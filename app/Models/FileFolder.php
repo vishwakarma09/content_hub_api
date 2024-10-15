@@ -67,9 +67,35 @@ class FileFolder extends Model
     {
         Log::info('inside Model getChildren with nodeId: ' . $nodeId);
 
+        // check if node exists
         $node = FileFolder::where('id', $nodeId)
+            ->first();
+        if (!$node) {
+            return ['status' => false, 'message' => 'Node not found'];
+        }
+
+        // simple case, the logged-in user is owner of file
+        if ($node->user_id === Auth::id()) {
+            return $node->children()->get();
+        }
+
+        // complex case, when node is made available by sharing
+
+        // get ancestors to this node
+        $ancestorIds = [$node->id]; // pre-fill with current node id
+        $ancestors = $node->ancestors()->get()->toArray();
+        foreach ($ancestors as $ancestor) {
+            $ancestorIds[] = $ancestor['id'];
+        }
+        Log::info('ancestors: ' . print_r($ancestorIds, true));
+
+        // check if shared
+        $sharedWith = FileFolderShare::whereIn('file_folder_id', $ancestorIds)
             ->where('user_id', Auth::id())
             ->first();
+        if (!$sharedWith) {
+            return ['status' => false, 'message' => 'Not shared with this user'];
+        }
 
         return $node->children()->get();
     }
@@ -230,5 +256,27 @@ class FileFolder extends Model
         $sharedWith->delete();
 
         return ['status' => true, 'message' => 'Deleted share successfully'];
+    }
+
+    /**
+     * getHubRoot
+     */
+    public static function getHubRoot()
+    {
+        $sharedItems = FileFolderShare::where('user_id', Auth::id())
+            ->get();
+        $fileOrFolderIds = array_column($sharedItems->toArray(), 'file_folder_id');
+        $sharedItems = FileFolder::whereIn('id', $fileOrFolderIds)->get()->toArray();
+        return [
+            'root' => [ // virtual root
+                'id' => uniqid(),
+                'name' => 'Hub',
+                'text' => 'Hub',
+                'type' => 'folder',
+                'user_id' => Auth::id(),
+                'parent_id' => null,
+                'children' => $sharedItems,
+            ],
+        ];
     }
 }
