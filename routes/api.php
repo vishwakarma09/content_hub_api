@@ -13,6 +13,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // share routes
     Route::get('file-folders/{node_id}/share', [FileFolderController::class, 'getShare']);
     Route::post('file-folders/{node_id}/share', [FileFolderController::class, 'addShare']);
+    Route::delete('file-folders/{node_id}/share', [FileFolderController::class, 'deleteShare']);
 
     Route::get('file-folders/get-root', [FileFolderController::class, 'getRootNode']);
     Route::post('file-folders/create-node', [FileFolderController::class, 'createNode']);

@@ -189,4 +189,46 @@ class FileFolder extends Model
 
         return ['status' => true, 'message' => 'Shared successfully'];
     }
+
+    /**
+     * deleteShare
+     * @params $nodeId, $userId
+     */
+    public static function deleteShare($nodeId, $userId)
+    {
+        // validate ownership
+        $node = FileFolder::where('id', $nodeId)
+            ->where('user_id', Auth::id())
+            ->first();
+        if (!$node) {
+            return ['status' => false, 'message' => 'Node not found'];
+        }
+
+        // check if user exists
+        $user = User::where('id', $userId)->first();
+        if (!$user) {
+            return ['status' => false, 'message' => 'User not found'];
+        }
+
+        // get ancestors to this node
+        $ancestorIds = [$node->id]; // pre-fill with current node id
+        $ancestors = $node->ancestors()->get()->toArray();
+        foreach ($ancestors as $ancestor) {
+            $ancestorIds[] = $ancestor['id'];
+        }
+        Log::info('ancestors: ' . print_r($ancestorIds, true));
+
+        // check if already shared
+        $sharedWith = FileFolderShare::whereIn('file_folder_id', $ancestorIds)
+            ->where('user_id', $user->id)
+            ->first();
+        if (!$sharedWith) {
+            return ['status' => false, 'message' => 'Not shared with this user'];
+        }
+
+        Log::info('inside Model deleteShare with nodeId: ' . $nodeId . ' user id ' . $user->id);
+        $sharedWith->delete();
+
+        return ['status' => true, 'message' => 'Deleted share successfully'];
+    }
 }

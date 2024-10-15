@@ -34,7 +34,7 @@ class FileFolderController extends Controller
         $root = FileFolder::getRootOfAuthUser();
         return response()->json([
             'root' => $root,
-            'descendents' => $descendants = $root->descendants()->get()
+            'children' => $descendants = $root->children()->get()
         ]);
     }
 
@@ -156,6 +156,8 @@ class FileFolderController extends Controller
             'text' => 'required',
         ]);
 
+        Log::info('Incoming request:' . print_r($validated, true));
+
         $updateResponse = FileFolder::updateNode($validated['id'], $validated['text']);
         // return $rootFolder and $path in response
         return response()->json($updateResponse);
@@ -186,11 +188,25 @@ class FileFolderController extends Controller
     {
         Log::info('Inside addShare of FileFolderController');
         $validated = $request->validate([
-            'email_id' => 'required',
+            'email_id' => 'required|email',
         ]);
 
         $email_id = $validated['email_id'];
         $share = FileFolder::addShare($node_id, $email_id);
+        return response()->json($share);
+    }
+
+    /**
+     * delete share
+     */
+    public function deleteShare($node_id, Request $request)
+    {
+        Log::info('Inside deleteShare of FileFolderController');
+        $validated = $request->validate([
+            'user_id' => 'required',
+        ]);
+
+        $share = FileFolder::deleteShare($node_id, $validated['user_id']);
         return response()->json($share);
     }
 }
