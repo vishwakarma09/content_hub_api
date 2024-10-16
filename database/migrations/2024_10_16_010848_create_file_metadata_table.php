@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('file_metadata', function (Blueprint $table) {
             $table->id();
             $table->foreignId('file_folder_id')->constrained()->onDelete('cascade');
-            $table->string('uri');
-            $table->string('mime_type');
-            $table->float('size', 2); // in KB
+            $table->string('uri')->nullable();
+            $table->string('mime_type')->nullable();
+            $table->float('size', 2)->nullable(); // in KB
             $table->string('public_token')->nullable();
             $table->timestamps();
         });

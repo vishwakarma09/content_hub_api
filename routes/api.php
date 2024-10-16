@@ -11,6 +11,12 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 // File and Folder routes
 Route::middleware(['auth:sanctum'])->group(function () {
 
+    // generate public link
+    Route::get('file-folders/{node_id}/public-link', [FileFolderController::class, 'getPublicLink']);
+
+    // metadata
+    Route::get('file-folders/{node_id}/metadata', [FileFolderController::class, 'getMetadata']);
+
     // download routes
     Route::get('file-folders/{node_id}/download', [FileFolderController::class, 'download']);
 
@@ -30,3 +36,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // load resource routes
     Route::apiResource('file-folders', FileFolderController::class);
 });
+
+// Public download routes
+Route::get('file-folders/public-download/{token}', [FileFolderController::class, 'publicDownload']);

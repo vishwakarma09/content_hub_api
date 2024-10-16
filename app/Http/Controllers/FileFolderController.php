@@ -241,4 +241,35 @@ class FileFolderController extends Controller
         $download = FileFolder::download($node_id);
         return response()->json($download);
     }
+
+    /**
+     * get metadata
+     * @params $nodeId
+     */
+    public function getMetadata($node_id)
+    {
+        $metadata = FileFolder::getMetadata($node_id);
+        return response()->json($metadata);
+    }
+
+    /**
+     * getPublicLink
+     * @params $nodeId
+     */
+    public function getPublicLink($node_id)
+    {
+        $publicLink = FileFolder::getPublicLink($node_id);
+        return response()->json($publicLink);
+    }
+
+    /**
+     * publicDownload
+     * @params $token
+     */
+    public function publicDownload($token)
+    {
+        $publicDownload = FileFolder::publicDownload($token);
+        return response()->json($publicDownload);
+    }
+
 }

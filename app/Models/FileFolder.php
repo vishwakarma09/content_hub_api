@@ -10,6 +10,7 @@ use Kalnoy\Nestedset\NodeTrait;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Models\FileMetadata;
+use Illuminate\Support\Str;
 
 class FileFolder extends Model
 {
@@ -31,6 +32,14 @@ class FileFolder extends Model
                 'name' => 'Home',
                 'type' => 'folder',
                 'user_id' => Auth::id()
+            ]);
+
+            // create metadata
+            FileMetadata::create([
+                'file_folder_id' => $root->id,
+                'uri' => 'home',
+                'size' => 0,
+                'mime_type' => 'folder',
             ]);
         }
 
@@ -156,6 +165,14 @@ class FileFolder extends Model
             'type' => $type,
             'user_id' => $user_id, // owner of parent node
             'parent_id' => $parentId
+        ]);
+
+        // create metadata
+        FileMetadata::create([
+            'file_folder_id' => $newNode->id,
+            'uri' => $newNode->name,
+            'size' => 0,
+            'mime_type' => 'folder',
         ]);
 
         return [
@@ -418,5 +435,98 @@ class FileFolder extends Model
         $node->delete();
 
         return ['status' => true, 'message' => 'Deleted successfully'];
+    }
+
+    /**
+     * getMetadata
+     * @params $nodeId
+     */
+    public static function getMetadata($nodeId)
+    {
+
+        // check node exists
+        $node = FileFolder::where('id', $nodeId)
+            ->first();
+        if (!$node) {
+            return ['status' => false, 'message' => 'Node not found'];
+        }
+
+        // check access
+        $user_id = self::hasAccess($nodeId);
+        if(!$user_id) {
+            Log::info('No access to node');
+            return ['status' => false, 'message' => 'No access to node'];
+        }
+
+        $metadata = FileMetadata::where('file_folder_id', $node->id)
+            ->first();
+        if (!$metadata) {
+            return ['status' => false, 'message' => 'Metadata not found'];
+        }
+
+        return $metadata;
+    }
+
+    /**
+     * getPublicLink
+     * @params $nodeId
+     */
+    public static function getPublicLink($nodeId)
+    {
+        // check node exists
+        $node = FileFolder::where('id', $nodeId)
+            ->first();
+        if (!$node) {
+            return ['status' => false, 'message' => 'Node not found'];
+        }
+
+        // check access
+        $user_id = self::hasAccess($nodeId);
+        if(!$user_id) {
+            Log::info('No access to node');
+            return ['status' => false, 'message' => 'No access to node'];
+        }
+
+        $metadata = FileMetadata::where('file_folder_id', $node->id)
+            ->first();
+        if (!$metadata) {
+            return ['status' => false, 'message' => 'Metadata not found'];
+        }
+        $metadata->public_token = Str::random(32);
+        $metadata->save();
+
+        return [
+            'status' => true,
+            'message' => 'Public link generated',
+            'publicLink' => env('FRONTEND_URL') . '/public/' . $metadata->public_token,
+        ];
+    }
+
+    /**
+     * publicDownload
+     * @params $token
+     */
+    public static function publicDownload($token)
+    {
+        $metadata = FileMetadata::where('public_token', $token)
+            ->first();
+        if (!$metadata) {
+            return ['status' => false, 'message' => 'Metadata not found'];
+        }
+
+        $node = FileFolder::where('id', $metadata->file_folder_id)
+            ->first();
+        if (!$node) {
+            return ['status' => false, 'message' => 'Node not found'];
+        }
+
+        $contents = Storage::disk('local')->get($metadata->uri);
+
+        return [
+            'status' => true,
+            'message' => 'Downloaded successfully', 
+            'file' => base64_encode($contents),
+            'fileName' => $node->name,
+        ];
     }
 }
