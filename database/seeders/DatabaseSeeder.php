@@ -3,6 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\FileFolder;
+use App\Models\FileMetadata;
+use App\Models\FileFolderShare;
+
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,9 +19,27 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // create users
+        $userList = [
+            [
+                'name' => 'user1',
+                'email' => 'user1@example.com',
+            ],
+            [
+                'name' => 'user2',
+                'email' => 'user2@example.com',
+            ],
+            [
+                'name' => 'user3',
+                'email' => 'user3@example.com',
+            ],
+            [
+                'name' => 'user4',
+                'email' => 'user4@example.com',
+            ],
+        ];
+        foreach ($userList as $user) {
+            User::factory()->create($user);
+        }
     }
 }
