@@ -341,7 +341,7 @@ class FileFolder extends Model
         $sharedItems = FileFolder::whereIn('id', $fileOrFolderIds)->get()->toArray();
         return [
             'root' => [ // virtual root
-                'id' => uniqid(),
+                'id' => 'hub-' . Auth::id(),
                 'name' => 'Hub',
                 'text' => 'Hub',
                 'type' => 'folder',

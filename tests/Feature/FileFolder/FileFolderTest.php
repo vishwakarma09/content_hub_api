@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Testing\Fluent\AssertableJson;
 
 use App\Models\User;
+use App\Models\FileMetadata;
 
 class FileFolderTest extends TestCase
 {
@@ -48,10 +49,6 @@ class FileFolderTest extends TestCase
      */
     public function testCreateNode(): void
     {
-        self::$user2 = User::factory()->create();
-
-        Log::info('inside testCreateNode, user2: ' . self::$user2->id . ' and user1 is ' . self::$user1->id);
-
         $response = $this->actingAs(self::$user1)
             ->postJson('/api/file-folders/create-node', [
                 'parent_id' => 1,
@@ -75,5 +72,209 @@ class FileFolderTest extends TestCase
                 ->has('descendents')
                 ->etc()
         );
+    }
+
+    /**
+     * getAncestors
+     */
+    public function testGetAncestors(): void
+    {
+        $response = $this->actingAs(self::$user1)
+            ->get('/api/file-folders/2/ancestors');
+        Log::info('testGetAncestors response: ' . $response->getContent());
+
+        $response
+            ->assertJson(fn (AssertableJson $json) =>
+                $json
+                    ->has(1)
+                    ->first(fn (AssertableJson $json) =>
+                        $json->where('user_id', self::$user1->id)
+                            ->where('name', 'Home')
+                            ->where('parent_id', null)
+                            ->where('_lft', 1)
+                            ->where('_rgt', 4)
+                            ->etc()
+                    )
+        );
+    }
+
+    /**
+     * getDescendents
+     */
+    public function testGetDescendents(): void
+    {
+        $response = $this->actingAs(self::$user1)
+            ->get('/api/file-folders/1/descendents');
+        Log::info('testGetDescendents response: ' . $response->getContent());
+
+        $response
+            ->assertJson(fn (AssertableJson $json) =>
+                $json
+                    ->has(1)
+                    ->first(fn (AssertableJson $json) =>
+                        $json->where('user_id', self::$user1->id)
+                            ->where('name', 'User1Folder')
+                            ->where('parent_id', 1)
+                            ->where('_lft', 2)
+                            ->where('_rgt', 3)
+                            ->etc()
+                    )
+        );
+    }
+
+    /**
+     * getChildren
+     */
+    public function testGetChildren(): void
+    {
+        $response = $this->actingAs(self::$user1)
+            ->get('/api/file-folders/1/children');
+        Log::info('testGetChildren response: ' . $response->getContent());
+
+        $response
+            ->assertJson(fn (AssertableJson $json) =>
+                $json
+                    ->has(1)
+                    ->first(fn (AssertableJson $json) =>
+                        $json->where('user_id', self::$user1->id)
+                            ->where('name', 'User1Folder')
+                            ->where('parent_id', 1)
+                            ->where('_lft', 2)
+                            ->where('_rgt', 3)
+                            ->etc()
+                    )
+        );
+    }
+
+    /**
+     * getShare
+     */
+    public function testGetShareBeforeSharingNode(): void
+    {
+        $response = $this->actingAs(self::$user1)
+            ->get('/api/file-folders/2/share');
+        Log::info('testGetShare response: ' . $response->getContent());
+
+        $response
+            ->assertStatus(200)
+            ->assertJson([]);
+    }
+
+    /**
+     * addShare
+     */
+    public function testAddShare(): void
+    {
+        self::$user2 = User::factory()->create();
+
+        $response = $this->actingAs(self::$user1)
+            ->postJson('/api/file-folders/2/share', [
+                'email_id' => self::$user2->email,
+            ]);
+        Log::info('testAddShare response: ' . $response->getContent());
+        $response
+            ->assertJson(fn (AssertableJson $json) =>
+                $json->where('status', true)
+                    ->where('message', 'Shared successfully')
+            );
+
+        // get share after sharing
+        $response = $this->actingAs(self::$user1)
+            ->get('/api/file-folders/2/share');
+        Log::info('testGetShare response: ' . $response->getContent());
+
+        $response
+            ->assertJson(fn (AssertableJson $json) =>
+            $json
+                ->has(1)
+                ->first(fn (AssertableJson $json) =>
+                    $json->where('id', self::$user2->id)
+                        ->where('name', self::$user2->name)
+                        ->where('email', self::$user2->email)
+                        ->etc()
+                )
+            );
+    }
+
+    /**
+     * deleteShare
+     */
+    public function testDeleteShare(): void
+    {
+        $response = $this->actingAs(self::$user1)
+            ->deleteJson('/api/file-folders/2/share', [
+                'user_id' => self::$user2->id,
+            ]);
+        Log::info('testDeleteShare response: ' . $response->getContent());
+        $response
+            ->assertJson(fn (AssertableJson $json) =>
+                $json->where('status', true)
+                    ->where('message', 'Deleted share successfully')
+            );
+
+        // get share after unsharing
+        $response = $this->actingAs(self::$user1)
+            ->get('/api/file-folders/2/share');
+        Log::info('testGetShare response: ' . $response->getContent());
+
+        $response
+            ->assertJson([]);
+    }
+
+    /**
+     * getHubRoot
+     */
+    public function testGetHubRoot(): void
+    {
+        $response = $this->actingAs(self::$user1)
+            ->get('/api/file-folders/get-hub-root');
+        Log::info('testGetHubRoot response: ' . $response->getContent());
+
+        $response
+            ->assertJson(fn (AssertableJson $json) =>
+                $json->has('root', fn (AssertableJson $json) =>
+                    $json->where('id', 'hub-' . self::$user1->id)
+                        ->where('name', 'Hub')
+                        ->where('parent_id', null)
+                        ->where('user_id', self::$user1->id)
+                        ->where('children', [])
+                        ->etc()
+                    )
+                ->etc()
+        );
+    }
+
+    /**
+     * getPublicLink
+     */
+    public function testGetPublicLink(): void
+    {
+        $response = $this->actingAs(self::$user1)
+            ->get('/api/file-folders/2/public-link');
+        Log::info('testGetPublicLink response: ' . $response->getContent());
+
+        $metadata = FileMetadata::where('file_folder_id', 2)->first();
+        $publicLink = env('FRONTEND_URL') . '/public/' . $metadata->public_token;
+        Log::info('publicLink: ' . $publicLink);
+
+        $response
+            ->assertJson(fn (AssertableJson $json) =>
+                $json->where('status', true)
+                    ->where('message', 'Public link generated')
+                    ->where('publicLink', $publicLink)
+            );
+    }
+
+    /**
+     * publicDownload
+     */
+    public function testPublicDownload(): void
+    {
+        $metadata = FileMetadata::where('file_folder_id', 2)->first();
+        $response = $this->get('/api/file-folders/public-download/' . $metadata->public_token);
+        Log::info('testPublicDownload response: ' . $response->getContent());
+
+        $response
+            ->assertStatus(200);
     }
 }
