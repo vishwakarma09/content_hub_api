@@ -6,6 +6,7 @@ use App\Http\Requests\StoreFileFolderRequest;
 use App\Http\Requests\UpdateFileFolderRequest;
 use Illuminate\Http\Request;
 use App\Models\FileFolder;
+use App\Models\FileMetadata;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 
@@ -111,7 +112,7 @@ class FileFolderController extends Controller
         // extract base64 encoded file
         $binaryFile = base64_decode($validated['file']);
         $tempFileName = uniqid();
-        $path = Storage::disk('local')->put($tempFileName, $binaryFile);
+        $uploadResult = Storage::disk('local')->put($tempFileName, $binaryFile);
 
         $subFolder = FileFolder::create([
             'name' => $validated['fileName'], 
@@ -121,11 +122,20 @@ class FileFolderController extends Controller
         ]);
         $subFolder->appendToNode($parentNode)->save();
 
+        // save to file metadata
+        $fileMetadata = FileMetadata::create([
+            'file_folder_id' => $subFolder->id,
+            'uri' => $tempFileName,
+            'mime_type' => Storage::disk('local')->mimeType($tempFileName),
+            'size' => Storage::disk('local')->size($tempFileName),
+            'public_token' => null,
+        ]);
+
         // return $rootFolder and $path in response
         return response()->json([
             'parentNode' => $parentNode,
             'subFolder' => $subFolder,
-            'path' => $path,
+            'path' => $tempFileName,
             'decendents' => $descendants = $parentNode->descendants()->get()
         ]);
     }
@@ -168,7 +178,9 @@ class FileFolderController extends Controller
      */
     public function destroy(FileFolder $fileFolder)
     {
-        //
+        Log::info('Inside destroy of FileFolderController');
+        $deleteResponse = FileFolder::deleteNode($fileFolder->id);
+        return response()->json($deleteResponse);
     }
 
     /**
@@ -217,5 +229,16 @@ class FileFolderController extends Controller
     {
         $hubRoot = FileFolder::getHubRoot();
         return response()->json($hubRoot);
+    }
+
+    /**
+     * download
+     * @params $nodeId
+     */
+    public function download($node_id)
+    {
+        Log::info('Inside download of FileFolderController');
+        $download = FileFolder::download($node_id);
+        return response()->json($download);
     }
 }

@@ -10,6 +10,10 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 
 // File and Folder routes
 Route::middleware(['auth:sanctum'])->group(function () {
+
+    // download routes
+    Route::get('file-folders/{node_id}/download', [FileFolderController::class, 'download']);
+
     // hub routes
     Route::get('file-folders/get-hub-root', [FileFolderController::class, 'getHubRoot']);
 

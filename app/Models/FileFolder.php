@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Kalnoy\Nestedset\NodeTrait;
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use App\Models\FileMetadata;
 
 class FileFolder extends Model
 {
@@ -37,11 +39,18 @@ class FileFolder extends Model
 
     public static function getAncestors($nodeId)
     {
-        Log::info('inside Model getAncestors with nodeId: ' . $nodeId);
+        // check access
+        $user_id = self::hasAccess($nodeId);
+        if(!$user_id) {
+            Log::info('No access to node');
+            return ['status' => false, 'message' => 'No access to node'];
+        }
 
         $node = FileFolder::where('id', $nodeId)
-            ->where('user_id', Auth::id())
             ->first();
+        if (!$node) {
+            return ['status' => false, 'message' => 'Node not found'];
+        }
 
         return $node->ancestors()->get();
     }
@@ -51,11 +60,18 @@ class FileFolder extends Model
      */
     public static function getDescendents($nodeId)
     {
-        Log::info('inside Model getDescendents with nodeId: ' . $nodeId);
+        // check access
+        $user_id = self::hasAccess($nodeId);
+        if(!$user_id) {
+            Log::info('No access to node');
+            return ['status' => false, 'message' => 'No access to node'];
+        }
 
         $node = FileFolder::where('id', $nodeId)
-            ->where('user_id', Auth::id())
             ->first();
+        if (!$node) {
+            return ['status' => false, 'message' => 'Node not found'];
+        }
 
         return $node->descendants()->get();
     }
@@ -74,9 +90,36 @@ class FileFolder extends Model
             return ['status' => false, 'message' => 'Node not found'];
         }
 
+        // check access
+        $user_id = self::hasAccess($nodeId);
+        if(!$user_id) {
+            Log::info('No access to node');
+            return ['status' => false, 'message' => 'No access to node'];
+        }
+
+        return $node->children()->get();
+    }
+
+    /**
+     * hasAccess
+     * @params $nodeId
+     * checks if user has access to a node
+     * or
+     * if node is shared with user
+     */
+
+    public static function hasAccess($nodeId)
+    {
+        // check if node exists
+        $node = FileFolder::where('id', $nodeId)
+            ->first();
+        if (!$node) {
+            return false;
+        }
+
         // simple case, the logged-in user is owner of file
         if ($node->user_id === Auth::id()) {
-            return $node->children()->get();
+            return $node->user_id;
         }
 
         // complex case, when node is made available by sharing
@@ -87,34 +130,31 @@ class FileFolder extends Model
         foreach ($ancestors as $ancestor) {
             $ancestorIds[] = $ancestor['id'];
         }
-        Log::info('ancestors: ' . print_r($ancestorIds, true));
-
         // check if shared
         $sharedWith = FileFolderShare::whereIn('file_folder_id', $ancestorIds)
             ->where('user_id', Auth::id())
             ->first();
+
         if (!$sharedWith) {
-            return ['status' => false, 'message' => 'Not shared with this user'];
+            return false;
         }
 
-        return $node->children()->get();
+        return $node->user_id;
     }
 
     public static function createNode($name, $type, $parentId)
     {
-        $parentNode = FileFolder::where('id', $parentId)
-            ->where('user_id', Auth::id())
-            ->first();
-        if (!$parentNode) {
-            return response()->json([
-                'message' => 'Parent node not found'
-            ], 404);
+        // check hasAccess
+        $user_id = self::hasAccess($parentId);
+        if(!$user_id) {
+            return ['status' => false, 'message' => 'No access to parent node'];
         }
+        $parentNode = FileFolder::where('id', $parentId)->first();
 
         $newNode = FileFolder::create([
             'name' => $name,
             'type' => $type,
-            'user_id' => Auth::id(),
+            'user_id' => $user_id, // owner of parent node
             'parent_id' => $parentId
         ]);
 
@@ -130,9 +170,14 @@ class FileFolder extends Model
             ->where('user_id', Auth::id())
             ->first();
         if (!$node) {
-            return response()->json([
-                'message' => 'Node not found'
-            ], 404);
+            return ['status' => false, 'message' => 'Node not found'];
+        }
+
+        // check access
+        $user_id = self::hasAccess($nodeId);
+        if(!$user_id) {
+            Log::info('No access to node');
+            return ['status' => false, 'message' => 'No access to node'];
         }
 
         $node->name = $name;
@@ -152,9 +197,7 @@ class FileFolder extends Model
             ->where('user_id', Auth::id())
             ->first();
         if (!$node) {
-            return response()->json([
-                'message' => 'Node not found'
-            ], 404);
+            return ['status' => false, 'message' => 'Node not found'];
         }
 
         // get ancestors to this node
@@ -177,9 +220,8 @@ class FileFolder extends Model
      */
     public static function addShare($nodeId, $emailId)
     {
-        // validate ownership
+        // check node exists
         $node = FileFolder::where('id', $nodeId)
-            ->where('user_id', Auth::id())
             ->first();
         if (!$node) {
             return ['status' => false, 'message' => 'Node not found'];
@@ -189,6 +231,13 @@ class FileFolder extends Model
         $user = User::where('email', $emailId)->first();
         if (!$user) {
             return ['status' => false, 'message' => 'User not found'];
+        }
+
+        // check access
+        $user_id = self::hasAccess($nodeId);
+        if(!$user_id) {
+            Log::info('No access to node');
+            return ['status' => false, 'message' => 'No access to node'];
         }
 
         // get ancestors to this node
@@ -222,9 +271,8 @@ class FileFolder extends Model
      */
     public static function deleteShare($nodeId, $userId)
     {
-        // validate ownership
+        // check node exists
         $node = FileFolder::where('id', $nodeId)
-            ->where('user_id', Auth::id())
             ->first();
         if (!$node) {
             return ['status' => false, 'message' => 'Node not found'];
@@ -234,6 +282,13 @@ class FileFolder extends Model
         $user = User::where('id', $userId)->first();
         if (!$user) {
             return ['status' => false, 'message' => 'User not found'];
+        }
+
+        // check access
+        $user_id = self::hasAccess($nodeId);
+        if(!$user_id) {
+            Log::info('No access to node');
+            return ['status' => false, 'message' => 'No access to node'];
         }
 
         // get ancestors to this node
@@ -278,5 +333,90 @@ class FileFolder extends Model
                 'children' => $sharedItems,
             ],
         ];
+    }
+
+    /**
+     * download
+     * @params $nodeId
+     */
+    public static function download($nodeId)
+    {
+        Log::info('inside Model download with nodeId: ' . $nodeId);
+        // check access
+        $user_id = self::hasAccess($nodeId);
+        if(!$user_id) {
+            Log::info('No access to node');
+            return ['status' => false, 'message' => 'No access to node'];
+        }
+
+        $node = FileFolder::where('id', $nodeId)
+            ->first();
+        if (!$node) {
+            return ['status' => false, 'message' => 'Node not found'];
+        }
+
+        $metadata = FileMetadata::where('file_folder_id', $node->id)
+            ->first();
+        if (!$metadata) {
+            return ['status' => false, 'message' => 'Metadata not found'];
+        }
+
+        Log::info('metadata: ' . print_r($metadata, true));
+
+        $contents = Storage::disk('local')->get($metadata->uri);
+
+        return [
+            'status' => true,
+            'message' => 'Downloaded successfully', 
+            'file' => base64_encode($contents),
+            'fileName' => $node->name,
+        ];
+    }
+
+    /**
+     * deleteNode
+     * @params $nodeId
+     */
+    public static function deleteNode($nodeId)
+    {
+        // check node exists
+        $node = FileFolder::where('id', $nodeId)
+            ->first();
+        if (!$node) {
+            return ['status' => false, 'message' => 'Node not found'];
+        }
+
+        // check access
+        $user_id = self::hasAccess($nodeId);
+        if(!$user_id) {
+            Log::info('No access to node');
+            return ['status' => false, 'message' => 'No access to node'];
+        }
+
+        if ($node->type === 'folder') {
+            // delete all descendents
+            $descendents = $node->descendants()->get();
+            foreach ($descendents as $descendent) {
+                $metadata = FileMetadata::where('file_folder_id', $descendent->id)
+                    ->first();
+                if ($metadata) {
+                    Storage::disk('local')->delete($metadata->uri);
+                    $metadata->delete();
+                }
+                $descendent->delete();
+            }
+        } else {
+            // delete file
+            $metadata = FileMetadata::where('file_folder_id', $node->id)
+                ->first();
+            if ($metadata) {
+                Storage::disk('local')->delete($metadata->uri);
+                $metadata->delete();
+            }
+        }
+
+        $node->delete();
+
+        return ['status' => true, 'message' => 'Deleted successfully'];
     }
 }
