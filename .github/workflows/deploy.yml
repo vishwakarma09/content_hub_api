@@ -4,13 +4,9 @@ name: Deploy
 # pull request events on the production branch
 on:
   push:
-    branches:
-      - production
+    branches: [ "main" ]
   pull_request:
-    branches:
-      - production
-    env:
-        NODE_ENV: production
+    branches: [ "main" ]
 # Authenticate to the the server via ssh 
 # and run our deployment script 
 jobs:
@@ -25,4 +21,4 @@ jobs:
           username: ${{ secrets.USERNAME }}
           port: ${{ secrets.PORT }}
           key: ${{ secrets.SSHKEY }}
-          script: "cd /var/www/html && ./.scripts/deploy.sh"
+          script: "cd /var/www/content_hub/content_hub_api && ./.scripts/deploy.sh"
