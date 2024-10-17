@@ -277,17 +277,4 @@ class FileFolderTest extends TestCase
         $response
             ->assertStatus(200);
     }
-
-    /**
-     * test sample
-     */
-    public function testSample(): void
-    {
-        $response = $this->actingAs(self::$user1)
-            ->get('/api/file-folders/get-root');
-        Log::info('testSample response: ' . $response->getContent());
-
-        $response
-            ->assertStatus(200);
-    }
 }
