@@ -21,4 +21,4 @@ jobs:
           username: ${{ secrets.USERNAME }}
           port: ${{ secrets.PORT }}
           key: ${{ secrets.SSHKEY }}
-          script: "cd /var/www/content_hub/content_hub_api && ./.scripts/deploy.sh"
+          script: "cd /var/www/content_hub/content_hub_api && ./scripts/deploy.sh"
