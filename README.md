@@ -2,7 +2,7 @@
 
 API written in Laravel 11.x for serving content hub requests
 
-[Demo video]("https://drive.google.com/file/d/1WW8f302xrRK1iFyM8DrAcW6VWQ5IMyc2/view")
+[Demo video](https://drive.google.com/file/d/1WW8f302xrRK1iFyM8DrAcW6VWQ5IMyc2/view)
 ## Install:
 
 Install like any regular laravel 11.x application 
